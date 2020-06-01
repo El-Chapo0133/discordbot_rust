@@ -1,0 +1,1 @@
+/home/loris/02_Rust/discordbot_rust/target/debug/discordbot_rust: /home/loris/02_Rust/discordbot_rust/main.rs /home/loris/02_Rust/discordbot_rust/src/config/mod.rs /home/loris/02_Rust/discordbot_rust/src/mod.rs
