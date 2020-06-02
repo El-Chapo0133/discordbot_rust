@@ -27,13 +27,13 @@ struct User {
 }
 
 impl Users {
-        fn find(&self, input: String) -> User {
+        fn find(&self, input: &String) -> Option<User> {
                 for user in self.users.iter() {
-                        if user.name == input {
-                                return user.clone();
+                        if &user.name == input {
+                                return Some(user.clone());
                         }
                 }
-                return User { name: String::from(""), golds: 0.0 };
+                return None;
         }
 }
 
@@ -90,19 +90,27 @@ fn lead_command(context: Context, message: Message) {
                                 }
                         };
                         let users: Users = serialize(content);
-                        let stat: User = users.find(message.author.name.to_string());
-                        
-                        if let Err(why) = message.channel_id.send_message(&context.http, |message| {
-                                message.embed(|embed| {
-                                        embed.title(format!("{} stats", stat.name));
-                                        embed.field("Golds", stat.golds.to_string(), false);
-                                        return embed;
-                                });
-
-                                return message;
-                        }) {
-                                println!("Error sending message: {}", why);
-                        }
+                        match users.find(&message.author.name.to_string()) {
+                                Some(stat) => {
+                                        if let Err(why) = message.channel_id.send_message(&context.http, |message| {
+                                                message.embed(|embed| {
+                                                        embed.title(format!("{} stats", stat.name));
+                                                        embed.field("Golds", stat.golds.to_string(), false);
+                                                        return embed;
+                                                });
+                
+                                                return message;
+                                        }) {
+                                                println!("Error sending message: {}", why);
+                                        }
+                                },
+                                None => {
+                                        if let Err(why) = message.channel_id.say(&context.http, "You're not playing for now, register with `'init`") {
+                                                println!("Error sending message: {}", why);
+                                                return;
+                                        }
+                                }
+                        };
                 } else if command[0] == "'init" {
                         let user: String = message.author.name.to_string();
                         let content: String = match read_file("./_resources/users.json") {
@@ -113,8 +121,20 @@ fn lead_command(context: Context, message: Message) {
                                 }
                         };
                         let mut users: Users = serialize(content);
-                        users.users.push(User {name: user, golds: 0.0});
 
+                        match users.find(&user) {
+                                Some(user) => {
+                                        if let Err(why) = message.channel_id.say(&context.http, format!("You're already playing as {}", &user.name)) {
+                                                println!("Error sending message: {}", why);
+                                        }
+                                },
+                                None => {
+                                        if let Err(why) = message.channel_id.say(&context.http, format!("You're now playing as {}", &user)) {
+                                                println!("Error sending message: {}", why);
+                                        }
+                                        users.users.push(User {name: user, golds: 0.0});
+                                }
+                        }
 
                         let json: String = deserialize(&users);
                         match write_file(json, "./_resources/users.json") {
