@@ -1,2 +1,0 @@
-cargo:rustc-env=TYPENUM_BUILD_CONSTS=/home/loris/02_Rust/discordbot_rust/target/debug/build/typenum-c1c711b1a3c3a3db/out/consts.rs
-cargo:rustc-env=TYPENUM_BUILD_OP=/home/loris/02_Rust/discordbot_rust/target/debug/build/typenum-c1c711b1a3c3a3db/out/op.rs
