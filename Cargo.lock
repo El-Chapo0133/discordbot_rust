@@ -161,6 +161,8 @@ name = "discordbot_rust"
 version = "0.1.0"
 dependencies = [
  "futures-macro",
+ "serde",
+ "serde_json",
  "serenity",
 ]
 
