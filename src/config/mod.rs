@@ -1,5 +1,5 @@
 mod private {
-        pub const TOKEN: &'static str = "Njc4NTg0NDg1MTQ2Nzg3ODQ5.XrwSrA.czTmw1WkRnRjIb0d3hQUx1RGVfU";
+        pub const TOKEN: &'static str = "";
         pub const PREFIX: &'static str = "!";
 }
 

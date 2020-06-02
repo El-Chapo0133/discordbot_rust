@@ -19,9 +19,26 @@ impl EventHandler for Handler {
                 if start_with_prefix(message.content, &self.prefix) {
                         // TODO : 
                         //  lead all bot functions
-                        if let Err(why) = message.channel_id.say(&context.http, "Pong!!!!") {
-                                println!("Error sending message: {}", why);
+                        
+                        println!("{}", message.author);
+
+                        if let Err(why) = message.channel_id.say(&context.http, "hey!") {
+                                println!("Error on seding message: {}", why);
                         }
+
+                        /*if let Err(why) = message.channel_id.send_message(&context.http, |message| {
+                                message.embed(|embed| {
+                                        embed.title("title");
+                                        embed.description("description");
+                                        embed.field("name", "value", false);
+
+                                        return embed;
+                                });
+
+                                return message;
+                        }) {
+                                println!("Error sending message: {}", why);
+                        }*/
                 }
         }
 }
