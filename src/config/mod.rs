@@ -41,3 +41,15 @@ fn read_file_token() -> Result<String, Error> {
 
         Ok(content)
 }
+
+
+#[cfg(test)]
+mod tests {
+        use super::*;
+
+        #[test]
+        fn assert_prefix() {
+                let config: Config = Config::new();
+                assert_eq!(config.prefix(), "'");
+        }
+}

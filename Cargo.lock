@@ -164,6 +164,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serenity",
+ "time",
 ]
 
 [[package]]
