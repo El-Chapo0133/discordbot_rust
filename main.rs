@@ -4,6 +4,9 @@ mod src;
 
 mod data {
         pub const TIME_SINCE_MINE: i64 = 10; //60 * 20; // 20min
+        pub const DIVISOR_MINE: f64 = 250.0;
+        pub const DIVISOR_MINER: f64 = 300.0;
+        pub const DIVISOR_ENGAGE: f64 = 200.0;
 }
 
 extern crate time;
@@ -20,20 +23,20 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{Write,Error};
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize,Deserialize)] // need Debug for 'serde'
 struct Users {
         users: Vec<User>,
 }
 #[derive(Clone,Debug,Serialize,Deserialize)]
 struct User {
-        name: String,
-        golds: f64,
-        mine_ref: f64,
-        last_mine: i64,
-        mine_upgrades: f64,
-        miners: f64,
-        upgrade_miners: f64,
-        last_collect: i64,
+        name: String, // username
+        golds: f64, // number of golds
+        mine_ref: f64, // how much i mine
+        last_mine: i64, // last time i've mined
+        mine_upgrades: f64, // how much upgrade i have on mine (upgrade pickaxe)
+        miners: f64, // how much miners do i have
+        miners_upgrade: f64, // how much upgrade do i have on miners
+        last_collect: i64, // last time i collected golds from miners
 }
 
 impl Users {
@@ -58,7 +61,7 @@ impl Users {
                 for index in 0..self.users.len() {
                         if &self.users[index].name == author {
                                 let mining_time: i64 = time::get_time().sec - self.users[index].last_collect;
-                                let golds_collected: f64 = (mining_time as f64 / 10.0) * (self.users[index].miners * src::logarithm::Logarithm::get(&self.users[index].upgrade_miners));
+                                let golds_collected: f64 = (mining_time as f64 / 10.0) * (self.users[index].miners * src::logarithm::Logarithm::get(&self.users[index].miners_upgrade));
                                 self.users[index].golds += golds_collected;
                                 self.users[index].last_collect = time::get_time().sec;
                                 return Ok(golds_collected);
@@ -120,7 +123,7 @@ impl Users {
         fn buy_miner(&mut self, author: &String, divisor: f64) -> Result<&User, String> {
                 for index in 0..self.users.len() {
                         if &self.users[index].name == author {
-                                self.users[index].golds -= src::exponant::Exponant::get(&self.users[index].upgrade_miners, divisor);
+                                self.users[index].golds -= src::exponant::Exponant::get(&self.users[index].miners_upgrade, divisor);
                                 return Ok(&self.users[index]);
                         }
                 }
@@ -129,7 +132,7 @@ impl Users {
         fn engage_miner(&mut self, author: &String) -> Result<(), String> {
                 for index in 0..self.users.len() {
                         if &self.users[index].name == author {
-                                if self.users[index].golds - src::exponant::Exponant::get(&(&self.users[index].upgrade_miners + 1.0), 20.0) < 0.0 {
+                                if self.users[index].golds - src::exponant::Exponant::get(&(&self.users[index].miners_upgrade + 1.0), 20.0) < 0.0 {
                                         return Err(String::from("You do not have enough money to buy this"));
                                 }
                                 self.users[index].miners += 1.0;
@@ -141,10 +144,10 @@ impl Users {
         fn upgrade_miner(&mut self, author: &String) -> Result<(), String> {
                 for index in 0..self.users.len() {
                         if &self.users[index].name == author {
-                                if self.users[index].golds - src::exponant::Exponant::get(&(&self.users[index].upgrade_miners + 1.0), 20.0) < 0.0 {
+                                if self.users[index].golds - src::exponant::Exponant::get(&(&self.users[index].miners_upgrade + 1.0), 20.0) < 0.0 {
                                         return Err(String::from("You do not have enough money to buy this"));
                                 }
-                                self.users[index].upgrade_miners += 1.0;
+                                self.users[index].miners_upgrade += 1.0;
                                 return Ok(());
                         }
                 }
@@ -171,7 +174,7 @@ fn lead_command(context: Context, message: Message) {
                         if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                 message.embed(|embed| {
                                         embed.title("EarthBreaker HELP");
-                                        embed.description("Hi, im a bot\nIm made in Rustlang (which a really good point)\nIm using the prefix ' (apostrophe)\n\nIn like a Clicker Game\n`init` yourself to start playing\n\n Then you can mine golds, upgrade your pickaxe to mine more, or engage miners which are gonna mine for you, you just have to `collect` sometimes\n\n\n");
+                                        embed.description("Hi, im a bot\nIm made in Rustlang (which a really good point)\nIm using the prefix ' (apostrophe)\n\nIn like a Clicker Game\n`init` yourself to start playing\n\n Then you can mine golds, upgrade your pickaxe to mine more, or engage miners which are gonna mine for you, you just have to `collect` sometimes\n\n\nHave fun !\n");
                                         embed.field("command 'init'", "Init the game for you, like register", false);
                                         embed.field("command 'mine'", "Mine some golds, start somewhere!", false);
                                         embed.field("command 'stats'", "Show you your stats, your golds, your upgrades, etc...", false);
@@ -199,16 +202,16 @@ fn lead_command(context: Context, message: Message) {
                         
                         match users.find(&author) {
                                 Some(user) => {
-                                        let next_mine_upgrade = src::exponant::Exponant::get(&(&user.mine_upgrades + 1.0), 250.0);
-                                        let next_miner_upgrade = src::exponant::Exponant::get(&(&user.upgrade_miners + 1.0), 300.0);
-                                        let next_miner_engage = src::exponant::Exponant::get(&(&user.upgrade_miners + 1.0), 200.0);
+                                        let next_mine_upgrade = src::exponant::Exponant::get(&(&user.mine_upgrades + 1.0), data::DIVISOR_MINE);
+                                        let next_miner_upgrade = src::exponant::Exponant::get(&(&user.miners_upgrade + 1.0), data::DIVISOR_MINER);
+                                        let next_miner_engage = src::exponant::Exponant::get(&(&user.miners_upgrade + 1.0), data::DIVISOR_ENGAGE);
                                         if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                 message.embed(|embed| {
                                                         embed.title("Next upgrade");
                                                         embed.description(format!("The next upgrade for {}", author));
                                                         embed.field(format!("Mine lvl: {}", user.mine_upgrades + 1.0), format!("price: {}", next_mine_upgrade.to_string()), false);
                                                         embed.field(format!("Miner number: {}", user.miners + 1.0), format!("price: {}", next_miner_engage.to_string()), false);
-                                                        embed.field(format!("Miner lvl: {}", user.upgrade_miners + 1.0), format!("price: {}", next_miner_upgrade.to_string()), false);
+                                                        embed.field(format!("Miner lvl: {}", user.miners_upgrade + 1.0), format!("price: {}", next_miner_upgrade.to_string()), false);
                                                         embed.field("Actual golds", user.golds.to_string(), false);
 
                                                         return embed;
@@ -255,7 +258,7 @@ fn lead_command(context: Context, message: Message) {
 
                         match users.engage_miner(&author) {
                                 Ok(()) => {
-                                        match users.buy_miner(&author, 200.0) {
+                                        match users.buy_miner(&author, data::DIVISOR_MINER) {
                                                 Ok(user) => {
                                                         if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                                 message.embed(|embed| {
@@ -280,7 +283,7 @@ fn lead_command(context: Context, message: Message) {
                                         if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                 message.embed(|embed| {
                                                         embed.title("Hum, you can't do that");
-                                                        embed.description(format!("{}", output));
+                                                        embed.description(format!("\nMaybe you're not registred, do it with `'init`\n\n{}", output));
 
                                                         return embed;
                                                 });
@@ -315,7 +318,7 @@ fn lead_command(context: Context, message: Message) {
 
                                 match users.upgrade_and_update_mine_ref(&author) {
                                         Ok(()) => {
-                                                match users.buy_mine(&author, 250.0) {
+                                                match users.buy_mine(&author, data::DIVISOR_MINE) {
                                                         Ok(user) => {
                                                                 if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                                         message.embed(|embed| {
@@ -339,7 +342,7 @@ fn lead_command(context: Context, message: Message) {
                                                 if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                         message.embed(|embed| {
                                                                 embed.title("Hum, you can't do that");
-                                                                embed.description(format!("{}", output));
+                                                                embed.description(format!("\nMaybe you're not registred, do it with `'init`\n\n{}", output));
 
                                                                 return embed;
                                                         });
@@ -359,8 +362,6 @@ fn lead_command(context: Context, message: Message) {
                                         }
                                 }
                         } else if command[1] == "miner" {
-                                // TODO:
-                                //  upgrade the golds mined from the miners (assossiated with the user)
                                 let content: String = match read_file("./_resources/users.json") {
                                         Ok(s) => s,
                                         Err(why) => {
@@ -375,12 +376,13 @@ fn lead_command(context: Context, message: Message) {
 
                                 match users.upgrade_miner(&author) {
                                         Ok(()) => {
-                                                match users.buy_miner(&author, 300.0) {
+                                                // using the same curve, but with a different divisor
+                                                match users.buy_miner(&author, data::DIVISOR_ENGAGE) {
                                                         Ok(user) => {
                                                                 if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                                         message.embed(|embed| {
                                                                                 embed.title("Upgraded !");
-                                                                                embed.description(format!("You've just upgraded your miners to the level {}", user.upgrade_miners));
+                                                                                embed.description(format!("You've just upgraded your miners to the level {}", user.miners_upgrade));
 
                                                                                 return embed;
                                                                         });
@@ -399,7 +401,7 @@ fn lead_command(context: Context, message: Message) {
                                                 if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                         message.embed(|embed| {
                                                                 embed.title("Hum, you can't do that");
-                                                                embed.description(format!("{}", output));
+                                                                embed.description(format!("\nMaybe you're not registred, do it with `'init`\n\n{}", output));
 
                                                                 return embed;
                                                         });
@@ -434,8 +436,6 @@ fn lead_command(context: Context, message: Message) {
                                 }
                         }
                 } else if command[0] == "'collect" {
-                        // TODO:
-                        //  calculate the golds mined from the miners, and add them to the user.golds
                         let content: String = match read_file("./_resources/users.json") {
                                 Ok(s) => s,
                                 Err(why) => {
@@ -466,7 +466,7 @@ fn lead_command(context: Context, message: Message) {
                                         if let Err(why) = message.channel_id.send_message(&context.http, |message| {
                                                 message.embed(|embed| {
                                                         embed.title("Error :( !");
-                                                        embed.description("I've occured an error when collecting your golds\nCall the bot's admin to try to gain them");
+                                                        embed.description("I've occured an error when collecting your golds\nMaybe you're not registred, do it with `'init`\nOr you do not have any miners yet, engage one with `'engage`\n\n\nCall the bot's admin to try to gain them");
                                                         embed.field("Error occured:", output.to_string(), false);
 
                                                         return embed;
@@ -600,6 +600,8 @@ fn lead_command(context: Context, message: Message) {
                                                         embed.title(format!("{} stats", stat.name));
                                                         embed.field("Golds", stat.golds.to_string(), false);
                                                         embed.field("Mine value", stat.mine_ref.to_string(), false);
+                                                        embed.field("Miners", stat.miners.to_string(), false);
+                                                        embed.field("Miner upgrade", stat.miners_upgrade, false);
                                                         return embed;
                                                 });
                 
@@ -636,7 +638,7 @@ fn lead_command(context: Context, message: Message) {
                                         if let Err(why) = message.channel_id.say(&context.http, format!("You're now playing as {}", &user)) {
                                                 println!("Error sending message: {}", why);
                                         }
-                                        users.users.push(User {name: user, golds: 0.0, mine_ref: 1.0, last_mine: 0, mine_upgrades: 1.0, miners: 0.0, upgrade_miners: 1.0, last_collect: 0});
+                                        users.users.push(User {name: user, golds: 0.0, mine_ref: 1.0, last_mine: 0, mine_upgrades: 1.0, miners: 0.0, miners_upgrade: 0.0, last_collect: 0});
                                 }
                         }
 
